@@ -1,7 +1,7 @@
 import mxnet as mx
 import dataset.pnet
 
-gpus = (0, 1)
+gpus = (1, )
 epoch_size = dataset.pnet.img_cnt / dataset.pnet.batch_size
 
 
@@ -17,11 +17,11 @@ def get_train_params(begin_epoch=0):
         'optimizer': 'sgd',
         'optimizer_params': {
             'begin_num_update': begin_epoch * epoch_size,
-            'learning_rate': 0.01,
-            # 'lr_scheduler': mx.lr_scheduler.MultiFactorScheduler(
-            #     step=[x * epoch_size for x in (5, 10, 15)], factor=0.1
-            # ),
-            'wd': 0.0005,
+            'learning_rate': 0.1,
+            'lr_scheduler': mx.lr_scheduler.MultiFactorScheduler(
+                step=[x * epoch_size for x in (6, 12, 18)], factor=0.1
+            ),
+            'wd': 0.0001,
             'momentum': 0.9,
         },
 

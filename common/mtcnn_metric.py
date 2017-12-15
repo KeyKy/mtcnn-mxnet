@@ -22,6 +22,24 @@ class MtcnnAcc(mx.metric.EvalMetric):
         self.num_inst += mask.sum()
 
 
+class MtcnnClsRatio(mx.metric.EvalMetric):
+    def __init__(self, cls, name='mtcnn_cls_ratio', output_names=('mtcnn_prob', ), label_names=('prob_label', )):
+        super(MtcnnClsRatio, self).__init__(name, output_names=output_names, label_names=label_names)
+        self.cls = cls
+        self.name = name + "(%s)" % cls
+
+    def update(self, labels, preds):
+        assert len(preds) == 1
+        assert len(labels) == 1
+
+        prob_label = labels[0]
+        mask_0 = prob_label == self.cls
+        mask_1 = (prob_label == 0) + (prob_label == 1)
+
+        self.sum_metric += mask_0.sum().asnumpy()[0]
+        self.num_inst += mask_1.sum().asnumpy()[0]
+
+
 class MtcnnClsAcc(mx.metric.EvalMetric):
     def __init__(self, cls, name='mtcnn_cls_acc', output_names=('mtcnn_prob', ), label_names=('prob_label', )):
         super(MtcnnClsAcc, self).__init__(name, output_names=output_names, label_names=label_names)

@@ -28,7 +28,7 @@ def gen_neg_data(img, bboxes, img_idx, save_dir):
     height, width, _ = img.shape
     neg_num = 0
 
-    while neg_num < 10:
+    while neg_num < 100:
         size = npr.randint(20, min(width, height)/3.0)
         nx1 = npr.randint(0, width-size)
         ny1 = npr.randint(0, height-size)
@@ -42,7 +42,11 @@ def gen_neg_data(img, bboxes, img_idx, save_dir):
 
         crop = img[ny1:ny2, nx1:nx2, :]
         save_path = os.path.join(save_neg_dir, '%05d-%03d.jpg' % (img_idx, neg_num))
-        cv2.imwrite(save_path, cv2.resize(crop, (save_img_size, save_img_size), interpolation=cv2.INTER_LINEAR))
+        cv2.imwrite(
+            save_path,
+            cv2.resize(crop, (save_img_size, save_img_size), interpolation=cv2.INTER_LINEAR),
+            [int(cv2.IMWRITE_JPEG_QUALITY), 100],
+        )
         neg_num += 1
 
 
@@ -61,21 +65,16 @@ def gen_pos_and_part(img, bboxes, img_idx, save_dir):
         w = x2 - x1
         h = y2 - y1
 
-        if max(w, h) < 20 or x1 < 0 or x2 < 0 or w < 0 or h < 0:
+        if min(w, h) < 20 or x1 < 0 or x2 < 0 or w <= 0 or h <= 0:
             continue
 
         side = max(w, h)
         sida = min(w, h)
 
-        for i in range(5):
-            if i > 0:
-                size = npr.randint(int(sida * 0.8), np.ceil(side * 1.25))
-                delta_x = npr.randint(-0.2*w, 0.2*w)
-                delta_y = npr.randint(-0.2*h, 0.2*h)
-            else:
-                size = int(side)
-                delta_x = 0
-                delta_y = 0
+        for i in range(50):
+            size = npr.randint(int(sida * 0.8), np.ceil(side * 1.25))
+            delta_x = npr.randint(-0.2*w, 0.2*w)
+            delta_y = npr.randint(-0.2*h, 0.2*h)
 
             crop_x1 = int(max(x1 + w / 2.0 + delta_x - size / 2.0, 0))
             crop_y1 = int(max(y1 + h / 2.0 + delta_y - size / 2.0, 0))
@@ -95,16 +94,20 @@ def gen_pos_and_part(img, bboxes, img_idx, save_dir):
             regr_x2 = (x2 - crop_x2) / float(size)
             regr_y2 = (y2 - crop_y2) / float(size)
 
-            if 0.6 < iou < 0.80:
+            if 0.4 < iou < 0.65:
                 save_path = os.path.join(save_part_dir, '%05d-%03d.jpg' % (img_idx, part_num))
                 part_num += 1
-            elif 0.8 <= iou:
+            elif 0.65 <= iou:
                 save_path = os.path.join(save_pos_dir, '%05d-%03d.jpg' % (img_idx, pos_num))
                 pos_num += 1
             else:
                 continue
 
-            cv2.imwrite(save_path, cv2.resize(crop, (save_img_size, save_img_size), interpolation=cv2.INTER_LINEAR))
+            cv2.imwrite(
+                save_path,
+                cv2.resize(crop, (save_img_size, save_img_size), interpolation=cv2.INTER_LINEAR),
+                [int(cv2.IMWRITE_JPEG_QUALITY), 100],
+            )
             regr_infos[os.path.relpath(save_path, save_dir)] = np.array([regr_x1, regr_y1, regr_x2, regr_y2])
 
     return regr_infos
@@ -177,30 +180,31 @@ def gen_data(img_root, lines, save_dir):
             f.write('\t'.join(line) + '\n')
 
 
-if __name__ == '__main__':
-    idl_root = '/home/yetiancai/data/idl'
-    save_img_size = 48
-
-    for tname in ('val', 'train'):
-        img_root = os.path.join(idl_root, 'images')
-        bbox_file = os.path.join(idl_root, 'annotations/bbox.%s' % tname)
-        save_dir = os.path.join(idl_root, '%s_crops' % tname)
-
-        with open(bbox_file) as f:
-            lines = f.readlines()
-        random.shuffle(lines)
-        gen_data(img_root, lines, save_dir)
-
-
 # if __name__ == '__main__':
-#     wider_root = '/home/yetiancai/data/wider-face'
-#     wider_root = 'E:/wider-face'
+#     idl_root = '/home/yetiancai/data/idl'
+#     save_img_size = 48
+#
 #     for tname in ('val', 'train'):
-#         img_root = os.path.join(wider_root, '%s/images' % tname)
-#         bbox_file = os.path.join(wider_root, 'bbox.%s' % tname)
-#         save_dir = os.path.join(wider_root, '%s/crops' % tname)
+#         img_root = os.path.join(idl_root, 'images')
+#         bbox_file = os.path.join(idl_root, 'annotations/bbox.%s' % tname)
+#         save_dir = os.path.join(idl_root, '%s_crops' % tname)
+#
 #         with open(bbox_file) as f:
 #             lines = f.readlines()
 #         random.shuffle(lines)
 #         gen_data(img_root, lines, save_dir)
+
+
+if __name__ == '__main__':
+    wider_root = '/home/yetiancai/data/wider-face'
+    save_img_size = 48
+
+    for tname in ('val', 'train'):
+        img_root = os.path.join(wider_root, '%s/images' % tname)
+        bbox_file = os.path.join(wider_root, 'bbox.%s' % tname)
+        save_dir = os.path.join(wider_root, '%s/crops' % tname)
+        with open(bbox_file) as f:
+            lines = f.readlines()
+        random.shuffle(lines)
+        gen_data(img_root, lines, save_dir)
 

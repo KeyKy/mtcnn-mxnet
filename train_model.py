@@ -130,11 +130,11 @@ if __name__ == '__main__':
                           label_names=symbol.label_names,
                           logger=logger)
 
-    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0), metric.MtcnnClsAcc(1), metric.MtcnnMae()]
+    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0), metric.MtcnnClsAcc(1), metric.MtcnnMae(), metric.MtcnnClsRatio(0)]
 
     train_data = dataset.get_train_iter()
     eval_data = dataset.get_test_iter()
-    batch_end_callbacks = [mx.callback.Speedometer(dataset.batch_size, 1000), ]
+    batch_end_callbacks = [mx.callback.Speedometer(dataset.batch_size, 500, auto_reset=False), ]
     model.fit(train_data=train_data,
               eval_data=eval_data,
               eval_metric=eval_metrics,

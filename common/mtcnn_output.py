@@ -22,11 +22,11 @@ class MtcnnOutput(mx.operator.CustomOp):
         pos_mask = prob_label == 1
         neg_mask = prob_label == 0
 
-        loss = mx.nd.sum(-mx.nd.log(prob)*mx.nd.one_hot(prob_label, 2), axis=1)
+        loss = mx.nd.sum(-mx.nd.log(prob)*mx.nd.one_hot(prob_label, 2), axis=1) * (pos_mask + neg_mask)
         sum_pos = mx.nd.sum(pos_mask)
         sum_neg = mx.nd.sum(neg_mask)
-        sum_pos_neg = (sum_pos + sum_neg).asnumpy()
-        hard_example_mask = mx.nd.topk(loss, k=int(0.7*sum_pos_neg), ret_typ='mask')
+        sum_pos_neg = sum_pos + sum_neg
+        hard_example_mask = mx.nd.topk(loss, k=int(0.7*sum_pos_neg.asnumpy()[0]), ret_typ='mask')
 
         # prob_mask = pos_mask * (sum_pos_neg / sum_pos * 0.5) + neg_mask * (sum_pos_neg / sum_neg * 0.5)
         # prob_mask = pos_mask * 2.0 * (1 - prob[:, 1]) + neg_mask * (1 - prob[:, 0])

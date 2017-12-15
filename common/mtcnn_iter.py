@@ -1,14 +1,31 @@
 
 import mxnet as mx
-import random
+import sys
+import os
+extra_path = os.path.realpath(os.path.join(__file__, '../../../gml/cmake-build-release/pygml/'))
+print("adding extra path: ", extra_path)
+sys.path.append(extra_path)
+import pygml
 
 
 class MtcnnRecordIter(mx.io.DataIter):
-    def __init__(self, batch_size, input_size, rand_mirror=False, **kwargs):
+    def __init__(self, img_root, bbox_file, batch_size, input_size, neg_per_face, pos_per_face, img_per_batch, round_cnt=1):
         super(MtcnnRecordIter, self).__init__(batch_size=batch_size)
+        self.batch_size = batch_size
         self.input_size = input_size
-        self.rand_mirror = rand_mirror
-        self.rec_iter = mx.io.ImageRecordIter(batch_size=batch_size, **kwargs)
+        self.round_cnt = round_cnt
+
+        self.source = pygml.FaceIter(
+            img_root,
+            bbox_file,
+            batch_size,
+            input_size,
+            neg_per_face,
+            pos_per_face,
+            img_per_batch,
+        )
+
+        self.reset()
 
     @property
     def provide_data(self):
@@ -22,25 +39,22 @@ class MtcnnRecordIter(mx.io.DataIter):
         ]
 
     def reset(self):
-        self.rec_iter.reset()
+        self.cur_round_idx = 0
+        self.source.Reset()
 
     def next(self):
-        batch = next(self.rec_iter)
+        if not self.source.Next():
+            self.cur_round_idx += 1
+            if self.cur_round_idx >= self.round_cnt:
+                raise StopIteration()
+            else:
+                self.source.Reset()
+                return self.next()
 
-        data = batch.data[0]
-        prob_label = batch.label[0][:, 0]
-        regr_label = batch.label[0][:, 1:]
-
-        if self.rand_mirror:
-            mirror = random.random() > 0.5
-        else:
-            mirror = False
-
-        if mirror:
-            data = mx.nd.reverse(data, axis=3)
-            x1 = regr_label[:, 0].copy()
-            regr_label[:, 0] = -regr_label[:, 2]
-            regr_label[:, 2] = -x1
+        data = mx.nd.array(self.source.GetCurBatchData())
+        label = self.source.GetCurBatchLabel()
+        prob_label = mx.nd.array(label[:, 0])
+        regr_label = mx.nd.array(label[:, 1:])
 
         return mx.io.DataBatch([data],
                                [prob_label, regr_label],

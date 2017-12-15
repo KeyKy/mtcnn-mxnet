@@ -1,43 +1,40 @@
-
 from common.mtcnn_iter import MtcnnRecordIter
 
-img_cnt = 3211000
+origin_image_cnt = 12880
 
 input_size = 48
-batch_size = 512
-preprocess_threads = 12
+neg_per_face = 1
+pos_per_face = 2
+img_per_batch = 512
+batch_size = (neg_per_face + pos_per_face) * img_per_batch
+round_cnt = 100
+
+img_cnt = origin_image_cnt // img_per_batch * batch_size * round_cnt
 
 
 def get_common_params():
     param = dict()
-    param['mean_r'] = 127.5
-    param['mean_g'] = 127.5
-    param['mean_b'] = 127.5
-    param['scale'] = 1.0 / 128.0
-    param['data_shape'] = (3, input_size, input_size)
-    param['label_width'] = 5
     param['batch_size'] = batch_size
-    param['preprocess_threads'] = preprocess_threads
-    param['resize'] = input_size
     param['input_size'] = input_size
-    param['shuffle'] = True
-
+    param['neg_per_face'] = neg_per_face
+    param['pos_per_face'] = pos_per_face
+    param['img_per_batch'] = img_per_batch
+    param['round_cnt'] = round_cnt
     return param
 
 
 def get_test_iter():
     return MtcnnRecordIter(
-        path_imgrec='/home/yetiancai/rec/idl/val.rec',
+        img_root='/home/yetiancai/data/wider-face/val/images/',
+        bbox_file='/home/yetiancai/data/wider-face/bbox.val',
         **get_common_params()
     )
 
 
 def get_train_iter():
     return MtcnnRecordIter(
-        rand_mirror=True,
-        path_imgrec='/home/yetiancai/rec/idl/train.rec',
-        max_random_contrast=0.2,
-        max_random_illumination=20,
+        img_root='/home/yetiancai/data/wider-face/train/images/',
+        bbox_file='/home/yetiancai/data/wider-face/bbox.train',
         **get_common_params()
     )
 

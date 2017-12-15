@@ -3,10 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# gt_path = 'E:/idl/annotations/bbox.val'
-# pred_path = 'E:/idl/annotations/bbox.eval'
-gt_path = 'E:/wider-face/bbox.val'
-pred_path = 'E:/wider-face/bbox.eval'
+# gt_path = '/data/idl/annotations/bbox.val'
+# pred_path = '/data/idl/annotations/bbox.eval'
+gt_path = '/data/idl/annotations/bbox_nose_24.test'
+pred_path = '/data/idl/annotations/bbox_nose_24.eval'
+# gt_path = 'E:/wider-face/bbox.val'
+# pred_path = 'E:/wider-face/bbox.eval'
 
 
 def IoU(box, boxes):
@@ -34,7 +36,6 @@ for line in lines:
     record = line.strip().split()
     fname = record[0]
     bboxes = np.array([float(v) for v in record[1:]]).reshape((-1, 4))
-
     gt[fname] = bboxes
 
 
@@ -47,22 +48,11 @@ for line in lines:
     record = line.strip().split()
     fname = record[0]
     bboxes = np.array([float(v) for v in record[1:]]).reshape((-1, 5))
-    tmp = []
-    for box in bboxes:
-        # x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
-        # if x2 - x1 < 20 or y2 - y1 < 20:
-        #     continue
-        tmp.append(box)
-    pred[fname] = tmp
+    pred[fname] = bboxes
 
 
 sum_faces = 0
 for fname, bboxes in gt.items():
-    # for box in bboxes:
-    #     x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
-    #     if x2 - x1 < 40 or y2 - y1 < 40:
-    #         continue
-    #     sum_faces += 1
     sum_faces += len(bboxes)
 
 
@@ -76,10 +66,6 @@ for fname, bboxes_info in pred.items():
     for bbox_info in bboxes_info:
         score = bbox_info[0]
         bbox = bbox_info[1:]
-        # x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
-        # if x2 - x1 < 20 or y2 - y1 < 20:
-        #     continue
-        # bbox = np.array([bbox[0], bbox[2], bbox[1], bbox[3]])
         iou = IoU(bbox, bboxes)
         if np.max(iou) > 0.65:
             res.append((score, 1))
@@ -92,19 +78,41 @@ res = sorted(res, key=lambda i: i[0], reverse=True)
 res_pts = []
 sum_hit = 0
 sum_not_hit = 0
-print(res)
+
+flag = 0
 for i, (score, hit) in enumerate(res):
     if hit:
         sum_hit += 1
     else:
         sum_not_hit += 1
-    # if sum_not_hit > 8000:
-    #     break
+    if sum_not_hit > 8000:
+        print(res_pts[-1][-1])
+        break
     res_pts.append((sum_not_hit, sum_hit / sum_faces))
+
+    if sum_not_hit == 880:
+        print('ff: ', sum_hit / sum_faces)
+
+    if sum_hit / sum_faces > 0.85 and not flag:
+        flag = 1
+        print('sum not hit: ', sum_not_hit)
 
 
 plt.figure()
+plt.ylim((0.0, 1.0))
+plt.xlabel('false positive')
+plt.ylabel('precision')
+
+plt.yticks([x*0.1 for x in range(0, 10)])
+
 plt.plot([p[0] for p in res_pts], [p[1] for p in res_pts])
 plt.show()
 
-print(res_pts)
+
+sum_pics = 0
+for fname, bboxes in gt.items():
+    if len(bboxes):
+        sum_pics += 1
+
+print('sum pics: %d' % sum_pics)
+
