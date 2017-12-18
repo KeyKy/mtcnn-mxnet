@@ -9,22 +9,12 @@ import pygml
 
 
 class MtcnnRecordIter(mx.io.DataIter):
-    def __init__(self, img_root, bbox_file, batch_size, input_size, neg_per_face, pos_per_face, img_per_batch, round_cnt=1):
-        super(MtcnnRecordIter, self).__init__(batch_size=batch_size)
-        self.batch_size = batch_size
-        self.input_size = input_size
-        self.round_cnt = round_cnt
+    def __init__(self, **kwargs):
+        super(MtcnnRecordIter, self).__init__(batch_size=kwargs['batch_size'])
+        self.batch_size = kwargs['batch_size']
+        self.input_size = kwargs['input_size']
 
-        self.source = pygml.FaceIter(
-            img_root,
-            bbox_file,
-            batch_size,
-            input_size,
-            neg_per_face,
-            pos_per_face,
-            img_per_batch,
-        )
-
+        self.source = pygml.FaceIter(**kwargs)
         self.reset()
 
     @property
@@ -39,17 +29,11 @@ class MtcnnRecordIter(mx.io.DataIter):
         ]
 
     def reset(self):
-        self.cur_round_idx = 0
         self.source.Reset()
 
     def next(self):
         if not self.source.Next():
-            self.cur_round_idx += 1
-            if self.cur_round_idx >= self.round_cnt:
-                raise StopIteration()
-            else:
-                self.source.Reset()
-                return self.next()
+            raise StopIteration()
 
         data = mx.nd.array(self.source.GetCurBatchData())
         label = self.source.GetCurBatchLabel()

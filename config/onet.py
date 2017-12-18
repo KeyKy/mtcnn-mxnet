@@ -1,7 +1,7 @@
 import mxnet as mx
 import dataset.rnet
 
-gpus = (0, )
+gpus = (3, )
 epoch_size = dataset.rnet.img_cnt / dataset.rnet.batch_size
 
 
