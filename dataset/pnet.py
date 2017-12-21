@@ -27,7 +27,5 @@ def get_train_iter():
     return MtcnnRecordIter(
         img_root='/home/yetiancai/data/wider-face/images/',
         bbox_file='/home/yetiancai/data/wider-face/bbox.train',
-        # max_random_contrast=0.2,
-        # max_random_illumination=30,
         **get_common_params()
     )

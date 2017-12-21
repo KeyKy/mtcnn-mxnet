@@ -1,4 +1,3 @@
-
 import mxnet as mx
 
 
@@ -16,6 +15,7 @@ class MtcnnOutput(mx.operator.CustomOp):
 
         prob_label = in_data[2]
         regr_label = in_data[3]
+        last_stage = in_data[4]
 
         regr_mask = prob_label != 0
 
@@ -34,10 +34,20 @@ class MtcnnOutput(mx.operator.CustomOp):
         # prob_mask = pos_mask*1.5 + neg_mask*0.7
         # prob_mask = pos_mask * 2.7 + neg_mask * 0.67
         # prob_mask = pos_mask * 1.5 + neg_mask * 0.6
-        # prob_mask = pos_mask * 1.0 + neg_mask * 1.0
+        prob_mask = pos_mask * 1.0 + neg_mask * 1.0
 
-        # self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*prob_mask.reshape((-1, 1)))
-        self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*hard_example_mask.reshape((-1, 1)))
+        if last_stage[0] < 0:
+            self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*hard_example_mask.reshape((-1, 1)))
+            # self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*prob_mask.reshape((-1, 1)))
+        else:
+            thresh = 0.3
+            sample_weight_decay = 0.1
+            last_stage_mask = ((last_stage < thresh) * sample_weight_decay + (last_stage >= thresh))
+            self.assign(
+                in_grad[0],
+                req[0],
+                -1.0/prob*mx.nd.one_hot(prob_label, 2)*prob_mask.reshape((-1, 1))*last_stage_mask.reshape((-1, 1))
+            )
         self.assign(in_grad[1], req[1], 0.5 * (regr - regr_label) * regr_mask.reshape((-1, 1)))
 
 
@@ -47,7 +57,7 @@ class MtcnnOutputProp(mx.operator.CustomOpProp):
         super(MtcnnOutputProp, self).__init__(need_top_grad=False)
 
     def list_arguments(self):
-        return ['prob', 'regr', 'prob_label', 'regr_label']
+        return ['prob', 'regr', 'prob_label', 'regr_label', 'last_stage']
 
     def list_outputs(self):
         return ['prob', 'regr']
@@ -59,7 +69,7 @@ class MtcnnOutputProp(mx.operator.CustomOpProp):
         assert in_shape[1][0] == batch_size
         assert in_shape[1][1] == 4
 
-        return [in_shape[0], in_shape[1], (batch_size, ), (batch_size, 4)], [in_shape[0], in_shape[1]], []
+        return [in_shape[0], in_shape[1], (batch_size, ), (batch_size, 4), (batch_size, )], [in_shape[0], in_shape[1]], []
 
     def infer_type(self, in_type):
         dtype = in_type[0]

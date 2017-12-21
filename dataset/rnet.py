@@ -27,8 +27,8 @@ def get_train_iter():
     return MtcnnRecordIter(
         img_root='/home/yetiancai/data/wider-face/images/',
         bbox_file='/home/yetiancai/data/wider-face/bbox.train',
-        # max_random_contrast=0.2,
-        # max_random_illumination=30,
+        # last_stage_symbol='/home/yetiancai/workspace/mtcnn-mxnet/pred_sym/pnet-symbol.json',
+        # last_stage_params='/home/yetiancai/workspace/mtcnn-mxnet/model/pnet/pnet-0020.params',
         **get_common_params()
     )
 

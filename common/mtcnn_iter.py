@@ -25,7 +25,8 @@ class MtcnnRecordIter(mx.io.DataIter):
     def provide_label(self):
         return [
             ('prob_label', (self.batch_size, )),
-            ('regr_label', (self.batch_size, 4))
+            ('regr_label', (self.batch_size, 4)),
+            ('last_stage', (self.batch_size, )),
         ]
 
     def reset(self):
@@ -37,10 +38,12 @@ class MtcnnRecordIter(mx.io.DataIter):
 
         data = mx.nd.array(self.source.GetCurBatchData())
         label = self.source.GetCurBatchLabel()
+
         prob_label = mx.nd.array(label[:, 0])
         regr_label = mx.nd.array(label[:, 1:])
+        last_stage = mx.nd.array(self.source.GetCurBatchLastStageScore())
 
         return mx.io.DataBatch([data],
-                               [prob_label, regr_label],
+                               [prob_label, regr_label, last_stage],
                                provide_data=self.provide_data,
                                provide_label=self.provide_label)

@@ -3,7 +3,7 @@ from common import mtcnn_output
 
 
 data_names = ['data', ]
-label_names = ['prob_label', 'regr_label']
+label_names = ['prob_label', 'regr_label', 'last_stage']
 
 
 def conv(data, num_filter, kernel, stride, pad, name):
@@ -30,11 +30,15 @@ def get_symbol(is_train=True):
     if is_train:
         prob_label = mx.sym.Variable(name='prob_label')
         regr_label = mx.sym.Variable(name='regr_label')
+        last_stage = mx.sym.Variable(name='last_stage')
 
         prob_flat = mx.sym.flatten(data=prob)
         regr_flat = mx.sym.flatten(data=regr)
 
-        return mx.sym.Custom(prob=prob_flat, regr=regr_flat,
-                             prob_label=prob_label, regr_label=regr_label, name='mtcnn', op_type='MtcnnOutput')
+        return mx.sym.Custom(
+            prob=prob_flat, regr=regr_flat,
+            prob_label=prob_label, regr_label=regr_label, last_stage=last_stage,
+            name='mtcnn', op_type='MtcnnOutput'
+        )
     else:
         return mx.sym.Group([prob, regr])
