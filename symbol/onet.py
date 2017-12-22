@@ -1,17 +1,6 @@
 import mxnet as mx
-from common import mtcnn_output
-
-
-data_names = ['data', ]
-label_names = ['prob_label', 'regr_label', 'last_stage']
-
-
-def conv(data, num_filter, kernel, stride, pad, name):
-    convolution = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=kernel,
-                                     stride=stride, pad=pad, name='conv_%s' % name)
-    # relu = mx.sym.Activation(data=convolution, act_type='relu', name='relu_%s' % name)
-    relu = mx.sym.LeakyReLU(data=convolution, act_type='prelu', name='relu_%s' % name)
-    return relu
+from symbol.common import conv
+import hyper_params.onet as hp
 
 
 def get_symbol(is_train=True):
@@ -40,11 +29,11 @@ def get_symbol(is_train=True):
     if is_train:
         prob_label = mx.sym.Variable(name='prob_label')
         regr_label = mx.sym.Variable(name='regr_label')
-        last_stage = mx.sym.Variable(name='last_stage')
 
         return mx.sym.Custom(
             prob=prob, regr=regr,
-            prob_label=prob_label, regr_label=regr_label, last_stage=last_stage,
+            prob_label=prob_label, regr_label=regr_label,
+            focal_gamma=hp.focal_gamma, regr_weight=hp.regr_weight,
             name='mtcnn', op_type='MtcnnOutput'
         )
     else:

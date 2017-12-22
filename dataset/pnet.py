@@ -1,31 +1,27 @@
 from common.mtcnn_iter import MtcnnRecordIter
-from dataset import wider_face as ds
-
-input_size = 12
-batch_size = 1024
-img_cnt = ds.img_cnt
+import hyper_params.pnet as hp
 
 
 def get_common_params():
     param = dict()
-    param['batch_size'] = batch_size
-    param['input_size'] = input_size
-    param['neg_per_face'] = ds.neg_per_face
-    param['pos_per_face'] = ds.pos_per_face
+    param['batch_size'] = hp.batch_size
+    param['input_size'] = hp.input_size
+    param['neg_per_face'] = hp.neg_per_face
+    param['pos_per_face'] = hp.pos_per_face
+    param['iou_thresh'] = hp.iou_thresh
+    param['img_root'] = hp.img_root
     return param
 
 
 def get_test_iter():
     return MtcnnRecordIter(
-        img_root='/home/yetiancai/data/wider-face/images/',
-        bbox_file='/home/yetiancai/data/wider-face/bbox.val',
+        bbox_file=hp.bbox_val,
         **get_common_params()
     )
 
 
 def get_train_iter():
     return MtcnnRecordIter(
-        img_root='/home/yetiancai/data/wider-face/images/',
-        bbox_file='/home/yetiancai/data/wider-face/bbox.train',
+        bbox_file=hp.bbox_train,
         **get_common_params()
     )

@@ -2,8 +2,10 @@ import mxnet as mx
 
 
 class MtcnnOutput(mx.operator.CustomOp):
-    def __init__(self):
+    def __init__(self, focal_gamma, regr_weight):
         super(MtcnnOutput, self).__init__()
+        self.focal_gamma = focal_gamma
+        self.regr_weight = regr_weight
 
     def forward(self, is_train, req, in_data, out_data, aux):
         self.assign(out_data[0], req[0], in_data[0])
@@ -15,49 +17,32 @@ class MtcnnOutput(mx.operator.CustomOp):
 
         prob_label = in_data[2]
         regr_label = in_data[3]
-        last_stage = in_data[4]
 
         regr_mask = prob_label != 0
 
-        pos_mask = prob_label == 1
-        neg_mask = prob_label == 0
+        # focal loss
+        gamma = float(self.focal_gamma)
+        prob = mx.nd.clip(prob, 1e-6, 1.0 - 1e-6)
+        grad = ((1.0 - prob)**gamma)*(-1.0/prob + gamma*mx.nd.log(prob)/(1-prob))
+        self.assign(in_grad[0], req[0], grad*mx.nd.one_hot(prob_label, 2))
 
-        loss = mx.nd.sum(-mx.nd.log(prob)*mx.nd.one_hot(prob_label, 2), axis=1) * (pos_mask + neg_mask)
-        sum_pos = mx.nd.sum(pos_mask)
-        sum_neg = mx.nd.sum(neg_mask)
-        sum_pos_neg = sum_pos + sum_neg
-        hard_example_mask = mx.nd.topk(loss, k=int(0.7*sum_pos_neg.asnumpy()[0]), ret_typ='mask')
-
-        # prob_mask = pos_mask * (sum_pos_neg / sum_pos * 0.5) + neg_mask * (sum_pos_neg / sum_neg * 0.5)
-        # prob_mask = pos_mask * 2.0 * (1 - prob[:, 1]) + neg_mask * (1 - prob[:, 0])
-        # prob_mask = pos_mask * prob_mask * (prob[:, 1] < 0.9) + neg_mask * prob_mask * (prob[:, 0] < 0.9)
-        # prob_mask = pos_mask*1.5 + neg_mask*0.7
-        # prob_mask = pos_mask * 2.7 + neg_mask * 0.67
-        # prob_mask = pos_mask * 1.5 + neg_mask * 0.6
-        prob_mask = pos_mask * 1.0 + neg_mask * 1.0
-
-        if last_stage[0] < 0:
-            self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*hard_example_mask.reshape((-1, 1)))
-            # self.assign(in_grad[0], req[0], -1.0/prob*mx.nd.one_hot(prob_label, 2)*prob_mask.reshape((-1, 1)))
-        else:
-            thresh = 0.3
-            sample_weight_decay = 0.1
-            last_stage_mask = ((last_stage < thresh) * sample_weight_decay + (last_stage >= thresh))
-            self.assign(
-                in_grad[0],
-                req[0],
-                -1.0/prob*mx.nd.one_hot(prob_label, 2)*prob_mask.reshape((-1, 1))*last_stage_mask.reshape((-1, 1))
-            )
-        self.assign(in_grad[1], req[1], 0.5 * (regr - regr_label) * regr_mask.reshape((-1, 1)))
+        # soft l1 loss
+        regr_weight = float(self.regr_weight)
+        regr_delta = regr - regr_label
+        regr_delta_abs = mx.nd.abs(regr_delta)
+        regr_grad = regr_delta * (regr_delta_abs < 1.0) + (regr_delta_abs > 1.0)*((regr_delta > 0)-(regr_delta < 0))
+        self.assign(in_grad[1], req[1], regr_weight * regr_grad * regr_mask.reshape((-1, 1)))
 
 
 @mx.operator.register('MtcnnOutput')
 class MtcnnOutputProp(mx.operator.CustomOpProp):
-    def __init__(self):
+    def __init__(self, focal_gamma, regr_weight):
         super(MtcnnOutputProp, self).__init__(need_top_grad=False)
+        self.focal_gamma = focal_gamma
+        self.regr_weight = regr_weight
 
     def list_arguments(self):
-        return ['prob', 'regr', 'prob_label', 'regr_label', 'last_stage']
+        return ['prob', 'regr', 'prob_label', 'regr_label']
 
     def list_outputs(self):
         return ['prob', 'regr']
@@ -69,12 +54,12 @@ class MtcnnOutputProp(mx.operator.CustomOpProp):
         assert in_shape[1][0] == batch_size
         assert in_shape[1][1] == 4
 
-        return [in_shape[0], in_shape[1], (batch_size, ), (batch_size, 4), (batch_size, )], [in_shape[0], in_shape[1]], []
+        return [in_shape[0], in_shape[1], (batch_size, ), (batch_size, 4)], [in_shape[0], in_shape[1]], []
 
     def infer_type(self, in_type):
         dtype = in_type[0]
         return [dtype] * len(self.list_arguments()), [dtype] * len(self.list_outputs())
 
     def create_operator(self, ctx, in_shapes, in_dtypes):
-        return MtcnnOutput()
+        return MtcnnOutput(self.focal_gamma, self.regr_weight)
 

@@ -77,24 +77,3 @@ class MtcnnMae(mx.metric.EvalMetric):
         self.sum_metric += np.abs((regr_label - pred) * mask).sum()
         self.num_inst += mask.sum() * pred.shape[1]
 
-
-class MtcnnLoss(mx.metric.EvalMetric):
-    def __init__(self, name='mtcnn_acc', output_names=('mtcnn_prob', ), label_names=('prob_label', )):
-        super(MtcnnLoss, self).__init__(name, output_names=output_names, label_names=label_names)
-
-    def update(self, labels, preds):
-        assert len(preds) == 1
-        assert len(labels) == 1
-
-        prob = preds[0]
-        prob_label = labels[0]
-
-        pred_label = mx.nd.argmax(prob, axis=1).asnumpy().astype('int32')
-
-        label = prob_label.asnumpy().astype('int32')
-        mask = prob_label.asnumpy().astype('int32') != -1
-
-        self.sum_metric += ((pred_label == label) * mask).sum()
-        self.num_inst += mask.sum()
-
-

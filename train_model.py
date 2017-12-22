@@ -1,9 +1,11 @@
+#!/usr/bin/env python
 import os
 import importlib
 import logging
 import mxnet as mx
 import argparse
 import common.mtcnn_metric as metric
+from symbol.common import data_names, label_names
 
 
 def parse_args():
@@ -44,9 +46,9 @@ def setup_checkpoint(netname):
     return model_prefix, cb
 
 
-def setup_devs(config):
-    if getattr(config, 'gpus', None):
-        devs = [mx.gpu(i) for i in config.gpus]
+def setup_devs(hyper_params):
+    if getattr(hyper_params, 'gpus', None):
+        devs = [mx.gpu(i) for i in hyper_params.gpus]
     else:
         devs = mx.cpu()
     return devs
@@ -65,13 +67,14 @@ def setup_basic_env(netname):
     config = importlib.import_module('config.' + netname)
     symbol = importlib.import_module('symbol.' + netname)
     dataset = importlib.import_module('dataset.' + netname)
-    return config, symbol, dataset
+    hyper_params = importlib.import_module('hyper_params.' + netname)
+    return config, symbol, dataset, hyper_params
 
 
 if __name__ == '__main__':
     args = parse_args()
     logger = setup_logger(args.netname)
-    config, symbol, dataset = setup_basic_env(args.netname)
+    config, symbol, dataset, hyper_params = setup_basic_env(args.netname)
     ###########################################
 
     net_symbol = symbol.get_symbol()
@@ -122,19 +125,17 @@ if __name__ == '__main__':
         logging.info('unmatch_params:')
         logging.info(unmatch_params)
 
-    devs = setup_devs(config)
+    devs = setup_devs(hyper_params)
     ###########################################
 
-    model = mx.mod.Module(context=devs, symbol=net_symbol,
-                          data_names=symbol.data_names,
-                          label_names=symbol.label_names,
+    model = mx.mod.Module(context=devs, symbol=net_symbol, data_names=data_names, label_names=label_names,
                           logger=logger)
-
-    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0), metric.MtcnnClsAcc(1), metric.MtcnnMae(), metric.MtcnnClsRatio(0)]
+    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0), metric.MtcnnClsAcc(1), metric.MtcnnMae(),
+                    metric.MtcnnClsRatio(0)]
 
     train_data = dataset.get_train_iter()
     eval_data = dataset.get_test_iter()
-    batch_end_callbacks = [mx.callback.Speedometer(dataset.batch_size, 500, auto_reset=False), ]
+    batch_end_callbacks = [mx.callback.Speedometer(hyper_params.batch_size, 500, auto_reset=False), ]
     model.fit(train_data=train_data,
               eval_data=eval_data,
               eval_metric=eval_metrics,
@@ -144,4 +145,3 @@ if __name__ == '__main__':
               aux_params=aux_params,
               allow_missing=True,
               **train_params)
-
