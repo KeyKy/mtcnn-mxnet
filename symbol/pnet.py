@@ -1,6 +1,7 @@
 import mxnet as mx
 from symbol.common import conv
 import hyper_params.pnet as hp
+from hyper_params import lmk_cnt
 
 
 def get_symbol(is_train=True):
@@ -19,15 +20,16 @@ def get_symbol(is_train=True):
     if is_train:
         prob_label = mx.sym.Variable(name='prob_label')
         regr_label = mx.sym.Variable(name='regr_label')
+        lmks_label = mx.sym.Variable(name='lmks_label')
 
         prob_flat = mx.sym.flatten(data=prob)
         regr_flat = mx.sym.flatten(data=regr)
 
         return mx.sym.Custom(
-            prob=prob_flat, regr=regr_flat,
-            prob_label=prob_label, regr_label=regr_label,
-            focal_gamma=hp.focal_gamma, regr_weight=hp.regr_weight,
-            name='mtcnn', op_type='MtcnnOutput'
+            prob=prob_flat, regr=regr_flat, lmks=mx.sym.zeros((hp.batch_size, lmk_cnt * 2)),
+            prob_label=prob_label, regr_label=regr_label, lmks_label=lmks_label,
+            focal_gamma=hp.focal_gamma, regr_weight=hp.regr_weight, lmks_weight=0,
+            name='mtcnn', op_type='MtcnnOutput',
         )
     else:
         return mx.sym.Group([prob, regr])

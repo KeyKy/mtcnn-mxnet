@@ -130,16 +130,17 @@ if __name__ == '__main__':
 
     model = mx.mod.Module(context=devs, symbol=net_symbol, data_names=data_names, label_names=label_names,
                           logger=logger)
-    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0), metric.MtcnnClsAcc(1), metric.MtcnnMae(),
-                    metric.MtcnnClsRatio(0)]
+    eval_metrics = [metric.MtcnnAcc(), metric.MtcnnClsAcc(0),
+                    metric.MtcnnClsAcc(1), metric.MtcnnRegrMae(),
+                    metric.MtcnnLmksMae(), metric.MtcnnClsRatio(0)]
 
     train_data = dataset.get_train_iter()
     eval_data = dataset.get_test_iter()
-    batch_end_callbacks = [mx.callback.Speedometer(hyper_params.batch_size, 500, auto_reset=False), ]
+    # batch_end_callbacks = [mx.callback.Speedometer(hyper_params.batch_size, 500, auto_reset=False), ]
     model.fit(train_data=train_data,
               eval_data=eval_data,
               eval_metric=eval_metrics,
-              batch_end_callback=batch_end_callbacks,
+              # batch_end_callback=batch_end_callbacks,
               epoch_end_callback=checkpoint_callback,
               arg_params=arg_params,
               aux_params=aux_params,

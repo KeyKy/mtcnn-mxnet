@@ -6,6 +6,7 @@ extra_path = os.path.realpath(os.path.join(__file__, '../../../gml/cmake-build-r
 print("adding extra path: ", extra_path)
 sys.path.append(extra_path)
 import pygml
+from hyper_params import lmk_cnt
 
 
 class MtcnnRecordIter(mx.io.DataIter):
@@ -26,6 +27,7 @@ class MtcnnRecordIter(mx.io.DataIter):
         return [
             ('prob_label', (self.batch_size, )),
             ('regr_label', (self.batch_size, 4)),
+            ('lmks_label', (self.batch_size, lmk_cnt * 2)),
         ]
 
     def reset(self):
@@ -39,9 +41,10 @@ class MtcnnRecordIter(mx.io.DataIter):
         label = self.source.GetCurBatchLabel()
 
         prob_label = mx.nd.array(label[:, 0])
-        regr_label = mx.nd.array(label[:, 1:])
+        regr_label = mx.nd.array(label[:, 1:5])
+        lmks_label = mx.nd.array(label[:, 5:])
 
         return mx.io.DataBatch([data],
-                               [prob_label, regr_label],
+                               [prob_label, regr_label, lmks_label],
                                provide_data=self.provide_data,
                                provide_label=self.provide_label)

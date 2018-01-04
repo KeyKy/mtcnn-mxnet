@@ -3,7 +3,7 @@ from common import mtcnn_output
 
 
 data_names = ['data', ]
-label_names = ['prob_label', 'regr_label']
+label_names = ['prob_label', 'regr_label', 'lmks_label']
 
 
 def conv(data, num_filter, kernel, stride, pad, name):

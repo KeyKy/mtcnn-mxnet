@@ -10,6 +10,7 @@ def get_common_params():
     param['pos_per_face'] = hp.pos_per_face
     param['iou_thresh'] = hp.iou_thresh
     param['img_root'] = hp.img_root
+    param['filters'] = hp.filters
     return param
 
 
